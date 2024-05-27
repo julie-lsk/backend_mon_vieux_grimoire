@@ -1,5 +1,6 @@
 const Book = require('../models/Book');
 const fs = require('fs'); /* méthodes d'interaction avec le système de fichiers du serveur (ds PC) */
+const path = require('path');
 
 
 exports.getAllBooks = (req, res, next) => 
@@ -8,6 +9,16 @@ exports.getAllBooks = (req, res, next) =>
     Book.find()
     // + conversion en JSON des books + MAJ du tableau
     .then(books => res.status(200).json(books))
+    .catch(error => res.status(400).json({error}));
+};
+
+
+exports.getBestBooks = (req, res, next) =>
+{
+    Book.find({}) /* Récup tous les livres de la BDD */
+    .sort({ averageRating: -1 }) /* Tri les notes (moyenne décroissante) */
+    .limit(3) /* Limite à 3 livres */
+    .then(books => res.status(200).json(books)) /* renvoie un tableau des 3 livres */
     .catch(error => res.status(400).json({error}));
 };
 
@@ -23,39 +34,81 @@ exports.getOneBook = (req, res, next) =>
 }
 
 
-/* TODO: A REVOIR */
-// exports.getBestBooks = async (req, res, next) => 
-// {
-//     try {
-//         // Rechercher tous les livres, les trier par note moyenne décroissante, et en limiter le nombre à 3
-//         const topRatedBooks = await Book.find().sort({ averageRating: -1 }).limit(3);
-//         console.log(topRatedBooks)
-
-//         // Envoyez le tableau des 3 meilleurs livres en tant que réponse
-//         res.status(200).json(topRatedBooks);
-//     } catch (error) {
-//         // Gérer les erreurs
-//         res.status(500).json({ error: error.message });
-//     }
-// }
-
-
 exports.createBook = (req, res, next) =>
 {
-    const bookObject = JSON.parse(req.body.book);
-    delete bookObject._id; /* on supprime l'id car il va être géré auto par MongoDB */
-    delete bookObject._userId; /* supp userId du client car on va prendre le userId qui vient du token d'auth (évite que qlq utilise le userId de qlq d'autre pour faire qlq chose) */
-    console.log(bookObject) /* TODO: à virer */
+    const bookObject = JSON.parse(req.body.book); /* Récup du livre créé dans le form côté front */
+    delete bookObject._id; /* Supprime l'ID car MongoDB le génère automatiquement */
+    delete bookObject._userId; /* Supp userId du client pour utiliser celui vérifié par le token d'auth (évite que qlq utilise le userId de qlq d'autre pour faire qlq chose) */
     const book = new Book ({
         ...bookObject,
-        userId: req.auth.userId, /* récup l'userId de par l'auth (vérifiée avec le token) */
-        /* On génère ci-dessous l'URL de l'image (car multer nous passe que le nom du fichier) */
-        imageUrl: `${req.protocol}://${req.get('host')}/images/${req.file.filename}` 
+        userId: req.auth.userId, /* Utilise l'userId du token d'authentification */
+        imageUrl: `${req.protocol}://${req.get('host')}/images/${req.file.filename}` /* Génère l'URL de l'image en utilisant le protocole, l'hôte et le nom du fichier */
     });
 
+    /* Enregistre le livre dans la BDD */
     book.save()
-    .then(() => {res.status(201).json({message: "Livre enregistré !!"})})
+    .then(() => {res.status(201).json({message: "Livre enregistré !"})})
     .catch(error => {res.status(400).json({error})})
+};
+
+
+exports.modifyBook = (req, res, next) =>
+{
+    /* Supprime l'image déjà existante si modif */
+    const deleteImage = (imagePath) => {
+        fs.unlink(imagePath, (err) => {
+            if (err) {
+                console.error("Failed to delete old image:", err);
+            }
+        });
+    };
+
+    /* On vérifie si un champs file est dans notre requête */
+    const bookObject = req.file ? 
+    {
+        ...JSON.parse(req.body.book), /* Si on a un fichier, on parse la string + recréé l'URL de l'image */
+        imageUrl: `${req.protocol}://${req.get('host')}/images/${req.file.filename}`
+    } :
+    {
+        /* s'il n'y a pas de fichier, on récup juste l'objet dans le corps de la requête */
+        ...req.body
+    };
+
+    /* Sécurité - supp userId pour éviter que qlq modifie un objet et le réassigne à qlq d'autre */
+    delete bookObject._userId;
+
+    /* Cherche notre objet dans la BDD - pour vérif l'utilisateur et ses droits de modif */
+    Book.findOne({_id: req.params.id}) /* récup de l'objet dans la BDD */
+    .then((book) => { /* on recherche l'objet  */
+        /* On vérifie que l'objet appartient bien à l'ut. qui nous envoie la requête de modif */
+        if (book.userId != req.auth.userId) /* Si l'id du créateur de l'objet n'est pas le même que l'id de celui qui souhaite le modifier */
+        {
+            /* L'objet ne lui appartient pas donc renvoi erreur */
+            res.status(403).json({message: "Requête non autorisée"});
+        }
+        else
+        {
+            /* Si une nouvelle image est téléchargée, supprimer l'ancienne image */
+            if (req.file) {
+                const oldImagePath = path.join(__dirname, '..', 'images', path.basename(book.imageUrl));
+                deleteImage(oldImagePath);
+            }
+
+            /* Si c'est le bon utilisateur (2 id correspondent), alors on met à jour l'objet */
+            Book.updateOne(
+                {_id: req.params.id}, /* précise quel enregistrement mettre à jour */
+                {
+                    ...bookObject, /* précise quel objet mettre à jour (celui qu'on a récup dans le body de la fonction) */
+                    _id: req.params.id /* précise l'id = celui qui vient des paramètres de l'URL */
+                }
+            )
+            .then(() => res.status(200).json({message: "Livre modifié !"}))
+            .catch(error => res.status(401).json({error}));
+        }
+    }) 
+    .catch((error) => {
+        res.status(400).json({error})
+    });
 };
 
 
