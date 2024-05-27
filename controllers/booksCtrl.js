@@ -15,7 +15,10 @@ exports.getAllBooks = (req, res, next) =>
 exports.getOneBook = (req, res, next) =>
 {
     Book.findOne({_id: req.params.id}) /* pour trouver l'objet selon son id */
-    .then(book => res.status(200).json(book))
+    .then(book => 
+    {
+        res.status(200).json(book);
+    })
     .catch(error => res.status(404).json(error));
 }
 
@@ -39,9 +42,10 @@ exports.getOneBook = (req, res, next) =>
 
 exports.createBook = (req, res, next) =>
 {
-    const bookObject = req.body.book; /* Transforme en JSON les données (string) envoyées par la requête */
-    // delete bookObject._id; /* on supprime l'id car il va être géré auto par MongoDB */
-    // delete bookObject._userId; /* supp userId du client car on va prendre le userId qui vient du token d'auth (évite que qlq utilise le userId de qlq d'autre pour faire qlq chose) */
+    const bookObject = JSON.parse(req.body.book);
+    delete bookObject._id; /* on supprime l'id car il va être géré auto par MongoDB */
+    delete bookObject._userId; /* supp userId du client car on va prendre le userId qui vient du token d'auth (évite que qlq utilise le userId de qlq d'autre pour faire qlq chose) */
+    console.log(bookObject) /* TODO: à virer */
     const book = new Book ({
         ...bookObject,
         userId: req.auth.userId, /* récup l'userId de par l'auth (vérifiée avec le token) */
@@ -53,3 +57,30 @@ exports.createBook = (req, res, next) =>
     .then(() => {res.status(201).json({message: "Livre enregistré !!"})})
     .catch(error => {res.status(400).json({error})})
 };
+
+
+exports.deleteBook = (req, res, next) =>
+{
+    Book.findOne({_id: req.params.id})
+    .then(book => 
+    {
+        /* on vérifie si c'est bien le propriétaire de l'objet qui dmd la suppression */
+        if (book.userId != req.auth.userId) 
+        {
+            /* Si ce n'est pas le même utilisateur, message d'erreur */
+            res.status(401).json({message: "Non autorisé."});
+        }
+        else
+        {
+            /* si c'est le bon utilisateur, alors on supprime l'objet + l'image dans les fichiers du PC */
+            const filename = book.imageUrl.split("/images/")[1]; /* Récup de l'img dans les fichiers (split autour du répertoire images) */
+            fs.unlink(`images/${filename}`, () => /* fs.unlick = package fs pour supp un fichier ds dossiers PC */
+            {
+                Book.deleteOne({_id: req.params.id})
+                .then(() => {res.status(200).json({message: "Objet supprimé !"})})
+                .catch(error => res.status(401).json({error}));
+            });
+        }
+    })
+    .catch(error => {res.status(500).json({error})});
+}
