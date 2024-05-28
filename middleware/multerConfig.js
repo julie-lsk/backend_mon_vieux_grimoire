@@ -38,23 +38,26 @@ const compressImage = async (req, res, next) =>
         fs.mkdirSync(uploadPath, { recursive: true });
     }
 
-    const { buffer, originalname, mimetype } = req.file;
+    const { buffer, originalname } = req.file;
     const name = originalname.split(' ').join('_').replace(/\.[^/.]+$/, ""); // Retire l'extension du nom du fichier
     const timestamp = Date.now();
     const ref = `${name}_${timestamp}.webp`;
     const filePath = path.join(uploadPath, ref);
 
-    try {
+    try 
+    {
         await sharp(buffer)
-            .webp({ quality: 20 }) // Compression et conversion en WebP
-            .toFile(filePath);
+        .webp({ quality: 20 }) // Compression et conversion en WebP
+        .toFile(filePath);
 
         req.file.filename = ref;
         req.file.path = filePath;
-        req.file.mimetype = 'image/webp'; // Mettre à jour le mimetype après conversion
+        req.file.mimetype = 'image/webp'; // FIXME: utile ????? Mettre à jour le mimetype après conversion
 
         next();
-    } catch (error) {
+    } 
+    catch (error) 
+    {
         next(error);
     }
 };

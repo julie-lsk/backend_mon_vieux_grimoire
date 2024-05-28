@@ -4,9 +4,9 @@ const mongoose = require("mongoose");
 
 
 /* Schéma de données */
-const bookSchema = mongoose.Schema({ /* TODO: quels éléments sonr requis ??? */
+const bookSchema = mongoose.Schema({
     /* id pas nécessaire car généré automatiquement par MongoDB */
-    userId: {type: String, required: true},
+    userId: {type: String},
     title: {type: String, required: true},
     author: {type: String, required: true},
     imageUrl: {type: String, required: true},

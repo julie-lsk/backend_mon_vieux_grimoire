@@ -32,6 +32,12 @@ app.use((req, res, next) =>
     /* Autorisation de certains verbes pour requêtes HTTP */
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
 
+    /* Garantit que les requêtes cross-origin se déroulent sans problème */
+    if (req.method === 'OPTIONS') 
+    {
+        return res.status(204).end();
+    }
+
     next();
 });
 

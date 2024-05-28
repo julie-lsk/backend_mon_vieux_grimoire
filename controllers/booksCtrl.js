@@ -31,7 +31,7 @@ exports.getOneBook = (req, res, next) =>
         res.status(200).json(book);
     })
     .catch(error => res.status(404).json(error));
-}
+};
 
 
 exports.createBook = (req, res, next) =>
@@ -42,23 +42,25 @@ exports.createBook = (req, res, next) =>
     const book = new Book ({
         ...bookObject,
         userId: req.auth.userId, /* Utilise l'userId du token d'authentification */
-        imageUrl: `${req.protocol}://${req.get('host')}/images/${req.file.filename}` /* Génère l'URL de l'image en utilisant le protocole, l'hôte et le nom du fichier */
+        imageUrl: `${req.protocol}://${req.get('host')}/images/${req.file.filename}`, /* Génère l'URL de l'image en utilisant le protocole, l'hôte et le nom du fichier */
+        ratings: [],
+        averageRating: 0
     });
 
     /* Enregistre le livre dans la BDD */
     book.save()
-    .then(() => {res.status(201).json({message: "Livre enregistré !"})})
+    .then(() => {res.status(201).json({message: "Livre enregistré : ", book})})
     .catch(error => {res.status(400).json({error})})
 };
 
 
 exports.modifyBook = (req, res, next) =>
 {
-    /* Supprime l'image déjà existante si modif */
+    /* Supprime l'image déjà existante si ajout d'une nouvelle */
     const deleteImage = (imagePath) => {
         fs.unlink(imagePath, (err) => {
             if (err) {
-                console.error("Failed to delete old image:", err);
+                console.error("Erreur lors de la suppresion de l'ancienne image :", err);
             }
         });
     };
@@ -136,4 +138,43 @@ exports.deleteBook = (req, res, next) =>
         }
     })
     .catch(error => {res.status(500).json({error})});
-}
+};
+
+
+exports.createRating = (req, res, next) =>
+{
+    Book.findOne({_id: req.params.id})
+    .then(book =>
+    {
+        const rating = req.body.rating;
+        const userId = req.auth.userId;
+
+        /* Erreur si livre non trouvé dans la BDD */
+        if (!book) 
+        {
+            return res.status(404).json({message: "Livre non trouvé."});
+        }
+
+        /* Vérifie si l'utilisateur a déjà noté le livre */
+        const existingRating = book.ratings.find(r => r.userId === userId);
+        if (existingRating)
+        {
+            return res.status(400).json({message: "Vous avez déjà noté ce livre."});
+        }
+
+        /* Ajoute la nouvelle note */
+        book.ratings.push({userId: userId, grade: rating});
+
+        /* Calcule la nouvelle moyenne - averageRating */
+        const totalRatings = book.ratings.length;
+        const sumRatings = book.ratings.reduce((sum, r) => sum + r.grade, 0);
+        book.averageRating = sumRatings / totalRatings;
+
+        /* MAJ du livre */
+        return book.save()
+        /* Renvoie un objet du livre */
+        .then(() => res.status(200).json(book))
+        .catch(error => res.status(500).json({message: "Erreur lors de la sauvegarde du livre.", error}));        
+    })
+    .catch(() => res.status(500).json({message: "Erreur serveur."}));
+};

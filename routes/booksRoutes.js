@@ -15,6 +15,7 @@ router.get("/:id", booksCtrl.getOneBook);
 router.post("/", auth, upload, compressImage, booksCtrl.createBook); /* 1er auth car récup + vérifie token | 2ème multer pour gérer new image | reste = gestionnaire de req. */
 router.put("/:id", auth, upload, compressImage, booksCtrl.modifyBook);
 router.delete("/:id", auth, booksCtrl.deleteBook);
+router.post("/:id/rating", auth, booksCtrl.createRating);
 
 
 module.exports = router;
