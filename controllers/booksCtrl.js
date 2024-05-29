@@ -168,7 +168,7 @@ exports.createRating = (req, res, next) =>
         /* Calcule la nouvelle moyenne - averageRating */
         const totalRatings = book.ratings.length;
         const sumRatings = book.ratings.reduce((sum, r) => sum + r.grade, 0);
-        book.averageRating = sumRatings / totalRatings;
+        book.averageRating = Math.ceil(sumRatings / totalRatings); /* Arrondi au supérieur */
 
         /* MAJ du livre */
         return book.save()
