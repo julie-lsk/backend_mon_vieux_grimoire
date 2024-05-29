@@ -13,6 +13,7 @@ exports.getAllBooks = (req, res, next) =>
 };
 
 
+
 exports.getBestBooks = (req, res, next) =>
 {
     Book.find({}) /* Récup tous les livres de la BDD */
@@ -21,6 +22,7 @@ exports.getBestBooks = (req, res, next) =>
     .then(books => res.status(200).json(books)) /* renvoie un tableau des 3 livres */
     .catch(error => res.status(400).json({error}));
 };
+
 
 
 exports.getOneBook = (req, res, next) =>
@@ -34,13 +36,18 @@ exports.getOneBook = (req, res, next) =>
 };
 
 
+
 exports.createBook = (req, res, next) =>
 {
-    const bookObject = JSON.parse(req.body.book); /* Récup du livre créé dans le form côté front */
-    delete bookObject._id; /* Supprime l'ID car MongoDB le génère automatiquement */
-    delete bookObject._userId; /* Supp userId du client pour utiliser celui vérifié par le token d'auth (évite que qlq utilise le userId de qlq d'autre pour faire qlq chose) */
+    /* Récup du livre créé dans le formulaire côté front */
+    const bookObject = JSON.parse(req.body.book); 
+
+    delete bookObject._id; /* Supp l'ID car MongoDB le génère automatiquement */
+    delete bookObject._userId; /* Supp userId du client pour utiliser celui vérifié par le token d'auth (évite que qlq utilise le userId de qlq d'autre) */
+
+    /* Création d'une variable avec les infos du new livre */
     const book = new Book ({
-        ...bookObject,
+        ...bookObject, /* copie les données de bookObject, les décompose et les passe dans le nouveau "book" */
         userId: req.auth.userId, /* Utilise l'userId du token d'authentification */
         imageUrl: `${req.protocol}://${req.get('host')}/images/${req.file.filename}`, /* Génère l'URL de l'image en utilisant le protocole, l'hôte et le nom du fichier */
         ratings: [],
@@ -52,6 +59,7 @@ exports.createBook = (req, res, next) =>
     .then(() => {res.status(201).json({message: "Livre enregistré : ", book})})
     .catch(error => {res.status(400).json({error})})
 };
+
 
 
 exports.modifyBook = (req, res, next) =>
@@ -143,6 +151,12 @@ exports.deleteBook = (req, res, next) =>
 
 exports.createRating = (req, res, next) =>
 {
+    /* FIXME: ne s'affiche qu'au clic sur le bouton valider du formulaire */
+    if (req.auth.userId === 'guest') 
+    {
+        return res.status(401).json({ message: 'Vous devez être connecté pour noter ce livre.' });
+    }
+
     Book.findOne({_id: req.params.id})
     .then(book =>
     {

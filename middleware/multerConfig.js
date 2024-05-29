@@ -52,7 +52,7 @@ const compressImage = async (req, res, next) =>
 
         req.file.filename = ref;
         req.file.path = filePath;
-        req.file.mimetype = 'image/webp'; // FIXME: utile ????? Mettre à jour le mimetype après conversion
+        req.file.mimetype = 'image/webp'; // TODO: utile ????? Mettre à jour le mimetype après conversion
 
         next();
     } 
