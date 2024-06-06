@@ -122,6 +122,7 @@ exports.modifyBook = (req, res, next) =>
 };
 
 
+
 exports.deleteBook = (req, res, next) =>
 {
     Book.findOne({_id: req.params.id})
@@ -149,22 +150,17 @@ exports.deleteBook = (req, res, next) =>
 };
 
 
+
 exports.createRating = (req, res, next) =>
 {
-    /* FIXME: ne s'affiche qu'au clic sur le bouton valider du formulaire */
-    if (req.auth.userId === 'guest') 
-    {
-        return res.status(401).json({ message: 'Vous devez être connecté pour noter ce livre.' });
-    }
-
     Book.findOne({_id: req.params.id})
     .then(book =>
     {
-        const rating = req.body.rating;
-        const userId = req.auth.userId;
+        const userId = req.auth.userId; /* Recherche le userId de l'utilisateur connecté */
+        const rating = req.body.rating; /* Recherche la note de l'utilisateur */
 
         /* Erreur si livre non trouvé dans la BDD */
-        if (!book) 
+        if (!book)
         {
             return res.status(404).json({message: "Livre non trouvé."});
         }
@@ -184,11 +180,11 @@ exports.createRating = (req, res, next) =>
         const sumRatings = book.ratings.reduce((sum, r) => sum + r.grade, 0);
         book.averageRating = Math.ceil(sumRatings / totalRatings); /* Arrondi au supérieur */
 
-        /* MAJ du livre */
+        /* MAJ du livre dans la BDD */
         return book.save()
         /* Renvoie un objet du livre */
         .then(() => res.status(200).json(book))
-        .catch(error => res.status(500).json({message: "Erreur lors de la sauvegarde du livre.", error}));        
+        .catch(error => res.status(500).json({message: "Erreur lors de la sauvegarde du livre.", error})); 
     })
     .catch(() => res.status(500).json({message: "Erreur serveur."}));
 };

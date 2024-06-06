@@ -4,55 +4,43 @@ const fs = require("fs");
 const path = require("path");
 
 
-/* Storage pour indiquer où enregistrer les fichiers téléchargés (entrants) */
-// const storage = multer.diskStorage({
-//     destination: (req, file, callback) => 
-//     {
-//         callback(null, 'images') /* enregistrement ds dossier images sur PC */
-//     },
-//     filename: (req, file, callback) => /* indique comment nommer le fichier téléchargé */
-//     {
-//         const name = file.originalname.split(' ').join('_').replace(/\.[^/.]+$/, ""); /* .replace pour retirer l'extension dans le nom du fichier */
-//         const extension = MIM_TYPES[file.mimetype]; /* Récup l'extension */
-//         callback(null, name + '_' + Date.now() + '.' + extension); /* nom unique : nom + date + extension */
-//     }
-// });
-
-// /* Gère les téléchargements d'images uniquement */
-// module.exports = multer({storage: storage}).single("image"); /* single = fichier unique (pas groupe de fichier) */
-
-
 const storage = multer.memoryStorage(); // Utilisation de la mémoire pour stocker temporairement le fichier
 const upload = multer({ storage });
 
-/* Middleware pour compresser et enregistrer l'image */
+/* Compresse et enregistre a nouvelle image */
 const compressImage = async (req, res, next) => 
 {
+    // Si aucun fichier n'est présent dans la requête, passe au middleware suivant
     if (!req.file) {
         return next();
     }
 
-    // Crée le dossier 'images' s'il n'existe pas
+    // Chemin du dossier de destination des images
     const uploadPath = './images';
-    if (!fs.existsSync(uploadPath)) {
+
+    // Crée le dossier 'images' s'il n'existe pas
+    if (!fs.existsSync(uploadPath)) 
+    {
         fs.mkdirSync(uploadPath, { recursive: true });
     }
 
-    const { buffer, originalname } = req.file;
-    const name = originalname.split(' ').join('_').replace(/\.[^/.]+$/, ""); // Retire l'extension du nom du fichier
-    const timestamp = Date.now();
-    const ref = `${name}_${timestamp}.webp`;
-    const filePath = path.join(uploadPath, ref);
+    const {buffer, originalname} = req.file; /* buffer = fichier téléchargé, stocké en attendant d'être traîté */
+    const name = originalname.split(' ').join('_').replace(/\.[^/.]+$/, ""); // Retire l'extension du nom du fichier (évite doublon)
+    const timestamp = Date.now(); /* Ajoute la date pour garantir un nom de fichier unique */
+    const ref = `${name}_${timestamp}.webp`; /* Nom final du fichier */
+    const filePath = path.join(uploadPath, ref); /* Chemin complet du fichier */
 
     try 
     {
+        // Compression et conversion de l'image en WebP
         await sharp(buffer)
-        .webp({ quality: 20 }) // Compression et conversion en WebP
-        .toFile(filePath);
+        .webp({quality: 30}) 
+        .toFile(filePath); /* Enregistre le fichier dans les dossier du PC */
 
+        /* MAJ des infos du fichier dans la requête */
         req.file.filename = ref;
         req.file.path = filePath;
-        req.file.mimetype = 'image/webp'; // TODO: utile ????? Mettre à jour le mimetype après conversion
+        req.file.mimetype = "image/webp";
 
         next();
     } 
@@ -62,8 +50,8 @@ const compressImage = async (req, res, next) =>
     }
 };
 
-/* Exporter multer avec le middleware de compression d'image */
+/* Exporte multer avec le middleware de compression d'image */
 module.exports = {
-    upload: upload.single('image'),
-    compressImage
+    upload: upload.single('image'), // Middleware multer pour traiter un seul fichier d'image
+    compressImage /* Middleware pour compresser l'image */
 };

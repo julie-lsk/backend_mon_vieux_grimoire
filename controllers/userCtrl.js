@@ -5,8 +5,8 @@ const User = require("../models/User");
 
 
 /* Enregistrement new utilisateur */
-exports.signup = (req, res, next) => {
-    /* Création du hash (asynchrone donc .then + .catch */
+exports.signup = (req, res, next) => 
+{
     bcrypt.hash(req.body.password, 10) /* data, salt (cmb de fois on exécute l'algo de hashage) */
     .then(hash =>
         {
@@ -15,7 +15,7 @@ exports.signup = (req, res, next) => {
                 email: req.body.email,
                 password: hash
             });
-            user.save() /* New ut. enregistré dans la BDD */
+            user.save() /* New user enregistré dans la BDD */
             .then(() => res.status(201).json({message: "Utilisateur créé !"}))
             .catch(error => res.status(400).json({error}))
         }
@@ -25,7 +25,8 @@ exports.signup = (req, res, next) => {
 
 
 /* Connexion des utilisateurs */
-exports.login = (req, res, next) => {
+exports.login = (req, res, next) => 
+{
     User.findOne({email: req.body.email})
     .then(user => {
         if (!user)
@@ -45,7 +46,7 @@ exports.login = (req, res, next) => {
             res.status(200).json({
                 userId: user._id,
                 token: jwt.sign ( /* comprend les données qu'on veut encoder */
-                    /* On encode le userId aussi pour création news objets = l'utilisateur pourra uniquement modifier l'objet qu'il a créé (pas les autres) */
+                    /* On encode le userId aussi pour création news livres = l'utilisateur pourra uniquement modifier le livre qu'il a créé (pas les autres) */
                     {userId: user._id}, /* pour bien identifier la req. du bon utilisateur/le bon userId */
                     "RANDOM_TOKEN_SECRET", /* clé secrète pour l'encodage (en production = doit être bcp plus longue et aléatoire pour sécurisé l'encodage) */
                     {expiresIn: '24h'}

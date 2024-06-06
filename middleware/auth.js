@@ -9,22 +9,15 @@ module.exports = (req, res, next) =>
         const decodedToken = jwt.verify(token, 'RANDOM_TOKEN_SECRET');
         const userId = decodedToken.userId;
 
-        /* FIXME:  */
-        if (userId !== undefined && userId !== null) 
+        req.auth = 
         {
-            req.auth = { userId };
-        } 
-        else 
-        {
-            req.auth = { userId: 'guest' };
-        }
+            userId: userId
+        };
+
         next();
     }
     catch (error) 
     {
-        /* FIXME: */
-        req.auth = {userId: 'guest'};
-        next();
-        // res.status(401).json({error})
+        res.status(401).json({message: "Authentification échouée.", error})
     }
 };
