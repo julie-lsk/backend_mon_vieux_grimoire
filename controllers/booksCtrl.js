@@ -73,7 +73,7 @@ exports.modifyBook = (req, res, next) =>
         });
     };
 
-    /* On vérifie si un champs file est dans notre requête */
+    /* On vérifie si une image est dans notre requête */
     const bookObject = req.file ? 
     {
         ...JSON.parse(req.body.book), /* Si on a un fichier, on parse la string + recréé l'URL de l'image */
@@ -140,7 +140,7 @@ exports.deleteBook = (req, res, next) =>
             const filename = book.imageUrl.split("/images/")[1]; /* Récup de l'img dans les fichiers (split autour du répertoire images) */
             fs.unlink(`images/${filename}`, () => /* fs.unlick = package fs pour supp un fichier ds dossiers PC */
             {
-                Book.deleteOne({_id: req.params.id})
+                Book.deleteOne({_id: req.params.id}) /* Récup id depuis paramètres URL */
                 .then(() => {res.status(200).json({message: "Objet supprimé !"})})
                 .catch(error => res.status(401).json({error}));
             });
