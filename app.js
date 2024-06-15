@@ -3,12 +3,16 @@ const bodyParser = require("body-parser");
 const mongoose = require("mongoose");
 const path = require('path'); /* accède au path/chemin du serveur dans répertoire PC */
 
+// Import des infos confidentielles via dotenv
+const dotenv = require('dotenv');
+dotenv.config();
+
 const booksRoutes = require("./routes/booksRoutes");
 const userRoutes = require('./routes/userRoutes');
 
 
 /* Importation de Mongoose */
-mongoose.connect('mongodb+srv://julie-lsk:HumJspONv78lx@testcoursbackend.lqvaxie.mongodb.net/?retryWrites=true&w=majority&appName=TestCoursBackend')
+mongoose.connect(process.env.DB_URL)
 .then(() => console.log("Connexion à MongoDB réussie ! =D"))
 .catch(() => console.log("Connexion à MongoDB échouée ! :("));
 
